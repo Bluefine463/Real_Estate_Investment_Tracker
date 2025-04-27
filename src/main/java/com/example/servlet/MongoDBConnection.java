@@ -17,7 +17,7 @@ public class MongoDBConnection {
     }
 
     public static MongoDatabase getDatabase() {
-        String uri = "mongodb+srv://220701087:12345678Harish@cluster0.jaobq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"; 
+        String uri = ""; // setup the mongodb atlas cloud and copy paste the connection code for java
         System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "error");
 
         try{
