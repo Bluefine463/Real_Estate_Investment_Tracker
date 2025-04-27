@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Property Details</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { overflow-x: hidden; }
+    .sidebar {
+      height: 100vh; background-color: #195065; padding-top: 60px;
+      position: fixed; width: 220px; color: white;
+    }
+    .sidebar a {
+      color: white; display: block; padding: 12px; text-decoration: none;
+    }
+    .sidebar a:hover { background-color: #143e50; }
+    .main-content { margin-left: 220px; padding: 20px; }
+    .property-table th { background-color: #1f7a8c; color: white; }
+    
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-dark bg-dark fixed-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Real Estate Tracker</a>
+      <div class="d-flex gap-2">
+        <a  href="property.html" id="backtoprop" class="btn btn-outline-light me-2">Back to Properties</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a href="dashboard.html">Home</a>
+    <a href="land.html">Land</a>
+    <a href="#">Apartments</a>
+    <a href="#">Villas</a>
+    <a href="#">Plots</a>
+  </div>
+
+  <div class="main-content mt-5">
+    <h2 class="mb-4">Property Overview</h2>
+    <table class="table table-bordered property-table">
+      <tbody id="propertyDetails"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const baseUrl = window.location.pathname.split('/')[1];
+    const urlParams = new URLSearchParams(window.location.search);
+    const propertyId = urlParams.get('uid');
+
+    async function loadProperty() {
+      const res = await fetch(`/${baseUrl}/GetProperty?uid=${propertyId}`,{
+        method: "POST"
+      });
+      const data = await res.json();
+      if(data.status === "error"){
+        console.error("Error: ",data.message);
+        return;
+      }
+
+       const table = document.getElementById('propertyDetails');
+        const hiddenKeys = ["_id", "username", "pl", "Expenses"];
+        table.innerHTML = Object.entries(data)
+        .filter(([key]) => !hiddenKeys.includes(key))
+        .map(([key, val]) => `<tr><th>${key}</th><td>${val}</td></tr>`)
+        .join('');
+
+    }
+
+
+
+            function showConfirm(index) {
+        const cell = document.getElementById(`action-${index}`);
+        cell.innerHTML = `
+            <div class="d-flex justify-content-center gap-2">
+            <button class="btn btn-sm btn-outline-success" onclick="confirmDelete(${index})">Confirm</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="cancelDelete(${index})">Cancel</button>
+            </div>
+        `;
+        }
+
+
+
+        function showMessage(msg, type = "info") {
+        const div = document.getElementById("messageArea");
+        div.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show d-inline-block" role="alert">
+            ${msg}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>`;
+        setTimeout(() => {
+        const alert = div.querySelector('.alert');
+        if (alert) {
+        alert.classList.remove('show'); // Triggers fade out
+        alert.classList.add('fade');
+        setTimeout(() => div.innerHTML = "", 500); // Clear HTML after fade
+        }
+        }, 4000);
+        }
+
+        document.getElementById("backtoprop").addEventListener("click",function(event){
+      event.preventDefault();
+      let url = `property.html?uid=${uid}`;
+      window.location.href=url;
+    });
+    function deleteProperty() {
+      fetch(`/${baseUrl}/DeleteProperty?uid=${propertyId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `uid=${propertyId}`
+      })
+      .then(response => response.json())
+      .then(data => {
+          showMessage("Property deleted successfully", "success");
+          setTimeout(() => {
+            window.location.href = "dashboard.html";
+          }, 2000); // Redirect after 2 seconds 
+      })
+      .catch(error => {
+        console.error("Error deleting property:", error);
+        showMessage("An error occurred while deleting the property", "danger");
+      });
+    }
+
+function cancelDelete() {
+  window.location.href = `property.html?uid=${propertyId}`;
+}
+
+
+
+   
+    loadProperty();
+  </script>
+  <div id="messageArea" class="text-center my-3"></div>
+  <div class="text-center mt-4">
+    <button class="btn btn-danger me-3" onclick="deleteProperty()">Delete</button>
+    <button class="btn btn-secondary" onclick="cancelDelete()">Cancel</button>
+  </div>
+  
+
+</body>
+</html> 

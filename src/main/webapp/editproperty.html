@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Property Details</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { overflow-x: hidden; }
+    .sidebar {
+      height: 100vh; background-color: #195065; padding-top: 60px;
+      position: fixed; width: 220px; color: white;
+    }
+    .sidebar a {
+      color: white; display: block; padding: 12px; text-decoration: none;
+    }
+    .sidebar a:hover { background-color: #143e50; }
+    .main-content { margin-left: 220px; padding: 20px; }
+    .property-table th { background-color: #1f7a8c; color: white; }
+    
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-dark bg-dark fixed-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Real Estate Tracker</a>
+      <div class="d-flex gap-2">
+        <a  href="property.html" id="backtoprop" class="btn btn-outline-light me-2">Back to Properties</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a href="dashboard.html">Home</a>
+    <a href="land.html">Land</a>
+    <a href="#">Apartments</a>
+    <a href="#">Villas</a>
+    <a href="#">Plots</a>
+  </div>
+
+<!-- Main Content -->
+<div class="main-content mt-5">
+  <h2 class="mb-4">Edit Property Details</h2>
+  <form id="editForm" class="needs-validation" novalidate>
+    <div id="propertyDetails"></div>
+    <input type="hidden" name="uid" id="uid" />
+    <div class="mt-4 text-center">
+      <button type="submit" class="btn btn-success me-2">Edit</button>
+      <button type="button" class="btn btn-secondary" onclick="cancelEdit()">Cancel</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const baseUrl = window.location.pathname.split('/')[1];
+  const urlParams = new URLSearchParams(window.location.search);
+  const propertyId = urlParams.get('uid');
+  document.getElementById("uid").value = propertyId;
+
+  async function loadProperty() {
+    const res = await fetch(`/${baseUrl}/GetProperty?uid=${propertyId}`, {
+      method: "POST"
+    });
+    const data = await res.json();
+    if (data.status === "error") {
+      console.error("Error: ", data.message);
+      return;
+    }
+
+    const form = document.getElementById('propertyDetails');
+    const hiddenKeys = ["_id", "username", "pl", "Expenses"];
+    form.innerHTML = Object.entries(data)
+      .filter(([key]) => !hiddenKeys.includes(key))
+      .map(([key, val]) => {
+        let type = (key === "purchaseDate") ? "date" : (typeof val === "number" ? "number" : "text");
+        if (type === "date" && val) {
+          val = new Date(val).toISOString().split('T')[0];
+        }
+        return `
+          <div class="mb-3 row">
+            <label class="col-sm-2 col-form-label">${key}</label>
+            <div class="col-sm-10">
+              <input type="${type}" class="form-control" name="${key}" value="${val}" required />
+            </div>
+          </div>
+        `;
+      }).join('');
+  }
+
+  document.getElementById("editForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    const params = new URLSearchParams(formData);
+    
+    try {
+      const res = await fetch(`/${baseUrl}/UpdateProperty?uid=${propertyId}`, {
+        method: "POST",
+        body: params
+      });
+      const json = await res.json();
+
+      if (res.ok) {
+        showMessage("Property edited successfully", "success");
+        setTimeout(() => {
+          window.location.href = `property.html?uid=${propertyId}`;
+        }, 1500);
+      } else {
+        showMessage("Failed to edit property", "danger");
+      }
+    } catch (error) {
+      console.error(error);
+      showMessage("Unexpected error occurred", "danger");
+    }
+  });
+
+  function cancelEdit() {
+    window.location.href = `property.html?uid=${propertyId}`;
+  }
+
+  function showMessage(msg, type = "info") {
+    const div = document.getElementById("messageArea");
+    div.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show d-inline-block" role="alert">
+        ${msg}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>`;
+    setTimeout(() => {
+      const alert = div.querySelector('.alert');
+      if (alert) {
+        alert.classList.remove('show');
+        alert.classList.add('fade');
+        setTimeout(() => div.innerHTML = "", 500);
+      }
+    }, 4000);
+  }
+
+  loadProperty();
+</script>
+
+<div id="messageArea" class="text-center my-3"></div>
+</body>
+</html>

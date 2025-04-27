@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>REITrack - Investment Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --primary-color: #2c7873;
+      --secondary-color: #6fb98f;
+      --dark-color: #2b2b2b;
+      --light-color: #f8f9fa;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #444;
+      background-color: #f5f7fa;
+      overflow-x: hidden;
+    }
+    
+    /* Navbar */
+    .navbar {
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      padding: 15px 0;
+      background-color: white !important;
+    }
+    
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+    }
+    
+    .logo-icon {
+      font-size: 1.8rem;
+      color: var(--primary-color);
+      margin-right: 10px;
+    }
+    
+    .logo-text {
+      font-weight: 700;
+      font-size: 1.5rem;
+      color: var(--dark-color);
+    }
+    
+    .logo-text span {
+      color: var(--primary-color);
+    }
+    
+    .nav-link {
+      font-weight: 500;
+      color: var(--dark-color) !important;
+      margin: 0 10px;
+    }
+    
+    .nav-link.active {
+      color: var(--primary-color) !important;
+    }
+    
+    /* Estimator Tooltip */
+    .estimator-container {
+      position: relative;
+      display: inline-block;
+      margin-right: 15px;
+    }
+    
+    .estimator-btn {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+    }
+    
+    .estimator-btn:hover {
+      background-color: var(--secondary-color);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .estimator-btn i {
+      margin-right: 5px;
+    }
+    
+    .estimator-tooltip {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background-color: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      width: 250px;
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      transform: translateY(10px);
+    }
+    
+    .estimator-container:hover .estimator-tooltip {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    
+    /* Notices Carousel */
+    .notices-container {
+      margin-bottom: 30px;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    }
+    
+    .notice-card {
+      padding: 20px;
+      height: 200px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      color: white;
+      position: relative;
+      background-size: cover;
+      background-position: center;
+    }
+    
+    .notice-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    
+    .notice-content {
+      position: relative;
+      z-index: 1;
+    }
+    
+    .notice-badge {
+      background-color: var(--secondary-color);
+      color: white;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+      display: inline-block;
+    }
+    
+    .notice-title {
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    
+    .notice-desc {
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+    }
+    
+    .notice-btn {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      align-self: flex-start;
+      transition: all 0.3s ease;
+    }
+    
+    .notice-btn:hover {
+      background-color: var(--secondary-color);
+    }
+    
+    /* Investment Overview - Animated Section */
+    .investment-section {
+      transform: translateY(50px);
+      opacity: 0;
+      transition: all 0.8s ease;
+    }
+    
+    .investment-section.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    
+    /* Property Type Cards */
+    .property-type-card {
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+      border: none;
+      position: relative;
+      z-index: 1;
+      background: white;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+      position: relative;
+    }
+    
+    .property-type-card::after {
+      content: '';
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+      border-radius: 10px;
+      z-index: -1;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .property-type-card:hover {
+      transform: translateY(-5px) scale(1.03);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .property-type-card:hover::after {
+      opacity: 1;
+    }
+    
+    .property-icon {
+      font-size: 2rem;
+      color: var(--primary-color);
+      margin-bottom: 10px;
+    }
+    
+    /* Summary Cards */
+    .summary-card {
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+      transition: all 0.3s ease;
+      background: white;
+    }
+    
+    .summary-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    }
+    
+    .summary-icon {
+      font-size: 1.5rem;
+      color: var(--primary-color);
+      margin-bottom: 10px;
+    }
+    
+    /* Charts */
+    .chart-container {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    }
+      /* Estimator Modals */
+  .estimator-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 20px;
+    display: none;
+  }
+
+  .estimator-modal.active {
+    display: block;
+  }
+
+  .full-modal {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    background: white;
+    border-radius: 10px;
+    z-index: 1001;
+    padding: 30px;
+    backdrop-filter: blur(5px);
+    display: none;
+  }
+
+  .full-modal.active {
+    display: block;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--dark-color);
+  }
+
+  .property-list-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: white;
+    border: 1px solid #eee;
+  }
+
+  .property-list-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    border-color: var(--primary-color);
+  }
+
+  .property-icon-modal {
+    font-size: 1.5rem;
+    margin-right: 15px;
+    color: var(--primary-color);
+  }
+   /* Blur overlay */
+   .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(5px);
+    z-index: 999;
+    display: none;
+  }
+  
+  .modal-overlay.active {
+    display: block;
+  }
+
+  /* Update full-modal styles */
+  .full-modal {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    background: white;
+    border-radius: 10px;
+    z-index: 1001;
+    padding: 30px;
+    overflow-y: auto;
+    display: none;
+  }
+
+  .full-modal.active {
+    display: block;
+  }
+
+  .modal-close {
+    position: fixed;
+    top: 30px;
+    right: 30px;
+    font-size: 1.8rem;
+    cursor: pointer;
+    color: var(--dark-color);
+    z-index: 1002;
+    background: white;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-light ">
+    <div class="container">
+      <a class="navbar-brand" href="#">
+        <div class="logo-icon">
+          <i class="fas fa-chart-line"></i>
+        </div>
+        <div class="logo-text">REI<span>Track</span></div>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link active" href="#dashboard">Dashboard</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#properties123">Properties</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#dashboard">Reports</a>
+          </li>
+          <!-- <li class="nav-item">
+            <a class="nav-link" href="#">Analytics</a>
+          </li> -->
+        </ul>
+        <div class="d-flex align-items-center">
+          <div class="estimator-container">
+            <button class="estimator-btn">
+              <i class="fas fa-calculator"></i> Estimator
+            </button>
+            <div class="estimator-tooltip">
+              <h6>Investment Estimator</h6>
+              <p>Calculate potential returns on new property investments with our advanced estimator tool.</p>
+              <small>Click to try it out!</small>
+            </div>
+          </div>
+          <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown">
+              <i class="fas fa-user-circle"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+              <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i> Profile</a></li>
+              <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i> Settings</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item" href="#"><i class="fas fa-sign-out-alt me-2"></i> Logout</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container mt-4">
+    <!-- Notices Carousel with Images -->
+    <div class="notices-container">
+      <div id="noticesCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="3000">
+        <div class="carousel-inner">
+          <div class="carousel-item active">
+            <div class="notice-card" style="background-image: url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')">
+              <div class="notice-content">
+                <span class="notice-badge">WEBINAR</span>
+                <h5 class="notice-title">Mastering Residential Real Estate Investments</h5>
+                <p class="notice-desc">Join our expert panel on June 15th to learn advanced strategies for property investments.</p>
+                <button class="notice-btn">Register Now</button>
+              </div>
+            </div>
+          </div>
+          <div class="carousel-item">
+            <div class="notice-card" style="background-image: url('https://images.unsplash.com/photo-1560520031-3a4dc4e9de0c?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')">
+              <div class="notice-content">
+                <span class="notice-badge">UPDATE</span>
+                <h5 class="notice-title">New Tax Benefits for Property Investors</h5>
+                <p class="notice-desc">Learn about the recent changes in tax laws that could save you thousands this fiscal year.</p>
+                <button class="notice-btn">Learn More</button>
+              </div>
+            </div>
+          </div>
+          <div class="carousel-item">
+            <div class="notice-card" style="background-image: url('https://images.unsplash.com/photo-1582268611958-ebfd161ef9cf?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')">
+              <div class="notice-content">
+                <span class="notice-badge">FEATURE</span>
+                <h5 class="notice-title">New Portfolio Analysis Tools Available</h5>
+                <p class="notice-desc">Our upgraded analytics dashboard now provides deeper insights into your investment performance.</p>
+                <button class="notice-btn">Try Now</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Investment Overview Section -->
+    <div class="investment-section" id="dashboard">
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <div class="chart-container">
+            <h5><i class="fas fa-chart-bar me-2"></i> Investment Overview</h5>
+            <canvas id="investmentChart"></canvas>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="chart-container">
+            <h5><i class="fas fa-chart-line me-2"></i> Total Profit / Loss</h5>
+            <canvas id="profitChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+      <div class="col-md-4 mb-3">
+        <div class="summary-card">
+          <div class="summary-icon">
+            <i class="fas fa-home"></i>
+          </div>
+          <h6>Total Properties</h6>
+          <h3 id="totalProperties">--</h3>
+        </div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="summary-card">
+          <div class="summary-icon">
+            <i class="fas fa-rupee-sign"></i>
+          </div>
+          <h6>Total Investment</h6>
+          <h3 id="totalInvestment">--</h3>
+        </div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="summary-card">
+          <div class="summary-icon">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <h6>Net Profit</h6>
+          <h3 id="netProfit">--</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- Property Type Cards -->
+    <div class="row mb-4">
+      <div class="col-md-12">
+        <h4 class="mb-3" id="properties123"><i class="fas fa-th-large me-2"></i> Property Types</h4>
+        <div class="row">
+          <div class="col-md-3 mb-3">
+            <div class="property-type-card text-center p-3" onclick="openType('landdetails2.html')">
+              <div class="property-icon">
+                <i class="fas fa-map-marked-alt"></i>
+              </div>
+              <h6>Land</h6>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="property-type-card text-center p-3" onclick="openType('apartmentsdetails.html')">
+              <div class="property-icon">
+                <i class="fas fa-building"></i>
+              </div>
+              <h6>Apartments</h6>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="property-type-card text-center p-3" onclick="openType('housesdetails.html')">
+              <div class="property-icon">
+                <i class="fas fa-home"></i>
+              </div>
+              <h6>Houses</h6>
+            </div>
+          </div>
+          <div class="col-md-3 mb-3">
+            <div class="property-type-card text-center p-3" onclick="openType('plotsdetails.html')">
+              <div class="property-icon">
+                <i class="fas fa-vector-square"></i>
+              </div>
+              <h6>Plots</h6>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="estimator-modal" id="propertyListModal">
+    <span class="modal-close" onclick="closeEstimatorModal()">&times;</span>
+    <h4 class="mb-4">Select Property to Estimate</h4>
+    <div id="propertyList"></div>
+  </div>
+
+  <div class="modal-overlay" id="estimationOverlay"></div>
+
+  <div class="full-modal" id="propertyEstimationModal">
+    <span class="modal-close" onclick="closeEstimationModal()">&times;</span>
+    <section class="mb-5">
+
+
+      <!-- Add current price comparison -->
+    <div class="row mb-4">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title"><i class="fas fa-balance-scale me-2"></i>Current Value vs Projections</h5>
+            <div class="row">
+              <div class="col-md-4">
+                <div class="alert alert-info">
+                  <h6>2024 Current Value</h6>
+                  <h4 id="currentPriceValue">--</h4>
+                </div>
+              </div>
+              <div class="col-md-8">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Year</th>
+                      <th>Price/sqft</th>
+                      <th>Value</th>
+                      <th>Growth %</th>
+                    </tr>
+                  </thead>
+                  <tbody id="priceComparison">
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+
+
+
+
+      <h2 class="section-title"><i class="fas fa-chart-line me-2"></i>Price Projections</h2>
+      <b><span id="estLocation" style="font-size: x-large;"></span></b>
+      
+      <div class="row mt-4">
+        <div class="col-md-8">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title"><i class="fas fa-chart-line me-2"></i>Price Projection (2025-2030)</h5>
+              <canvas id="estPriceChart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title"><i class="fas fa-info-circle me-2"></i>Projection Highlights</h5>
+              <div class="list-group">
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="mb-0">2025 Projection</h6>
+                    <small class="text-muted">Next year estimate</small>
+                  </div>
+                  <span class="badge bg-primary" id="price2025">--</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="mb-0">2027 Projection</h6>
+                    <small class="text-muted">Mid-term estimate</small>
+                  </div>
+                  <span class="badge bg-primary" id="price2027">--</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                  <div>
+                    <h6 class="mb-0">2030 Projection</h6>
+                    <small class="text-muted">Long-term estimate</small>
+                  </div>
+                  <span class="badge bg-primary" id="price2030">--</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <!-- <div class="row mt-4">
+        <div class="col-md-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title"><i class="fas fa-calculator me-2"></i>Estimated Value & Profit</h5>
+              <table class="table table-bordered">
+                <thead>
+                  <tr>
+                    <th>Year</th>
+                    <th>Price/sqft</th>
+                    <th>Estimated Value</th>
+                    <th>Profit % vs 2024</th>
+                  </tr>
+                </thead>
+                <tbody id="estCalculations">
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div> -->
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <script>
+    const baseUrl = window.location.pathname.split('/')[1];
+    
+    // Animation trigger
+    document.addEventListener('DOMContentLoaded', function() {
+      const investmentSection = document.querySelector('.investment-section');
+      investmentSection.classList.add('visible');
+      
+      // Fetch data after animation starts
+      setTimeout(fetchDashboardData, 500);
+    });
+    
+    // Fetch dashboard data - Using the exact working version from dashboard.html
+    async function fetchDashboardData() {
+      try {
+        const response = await fetch(`/${baseUrl}/ProfitLossByUsername`, {
+          method: "POST"
+        });
+        const data = await response.json();
+    
+        if (data.status === "error") {
+          console.error("Not logged in:", data.message);
+          return;
+        }
+    
+        // Use the exact chart drawing logic from dashboard.html
+        const labels = ["Investment", "Income", "Profit / Loss"];
+        const values = [
+          data.totalInvestment || 0,
+          data.totalIncome || 0,
+          data.totalProfitLoss || 0
+        ];
+    
+        // Investment Chart (exact working version)
+        new Chart(document.getElementById("investmentChart"), {
+          type: "bar",
+          data: {
+            labels: labels,
+            datasets: [{
+              label: "Financial Overview",
+              backgroundColor: ["#195065", "#1f7a8c", "#2ec4b6"],
+              data: values,
+            }],
+          },
+          options: {
+            responsive: true,
+          },
+        });
+    
+        // Profit Chart (exact working version)
+        new Chart(document.getElementById("profitChart"), {
+          type: "line",
+          data: {
+            labels: ["Profit / Loss"],
+            datasets: [{
+              label: "Net Profit / Loss",
+              borderColor: "green",
+              fill: false,
+              data: [data.totalProfitLoss || 0],
+            }],
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+              },
+            },
+          },
+        });
+    
+        // Update summary (exact working version)
+        document.getElementById("totalProperties").textContent = data.totalProperties || "0";
+        document.getElementById("totalInvestment").textContent = `₹${data.totalInvestment?.toLocaleString() || "0"}`;
+        document.getElementById("netProfit").textContent = `₹${data.totalProfitLoss?.toLocaleString() || "0"}`;
+        
+      } catch (error) {
+        console.error("Dashboard fetch error:", error);
+        // Initialize with empty data
+        document.getElementById("totalProperties").textContent = "0";
+        document.getElementById("totalInvestment").textContent = "₹0";
+        document.getElementById("netProfit").textContent = "₹0";
+      }
+    }
+    
+    // Navigate to property type
+    function openType(type) {
+      window.location.href = type;
+    }
+
+    // Estimator Functions
+  function openEstimator() {
+    document.getElementById('propertyListModal').classList.add('active');
+    fetchUserProperties();
+  }
+
+  function closeEstimatorModal() {
+    document.getElementById('propertyListModal').classList.remove('active');
+  }
+
+  function closeEstimationModal() {
+    document.getElementById('propertyEstimationModal').classList.remove('active');
+  }
+
+  async function fetchUserProperties() {
+    try {
+      const res = await fetch(`/${baseUrl}/GetAllPropertiesByUsername`, { method: "POST" });
+      const properties = await res.json();
+      renderPropertyList(properties);
+    } catch (error) {
+      console.error("Error fetching properties:", error);
+    }
+  }
+
+  function renderPropertyList(properties) {
+    const container = document.getElementById('propertyList');
+    container.innerHTML = properties.map(prop => `
+      <div class="property-list-item" onclick="openPropertyEstimation('${prop.location}', ${prop.size}, '${prop.type}')">
+        <i class="${getPropertyIcon(prop.type)} property-icon-modal"></i>
+        <div>
+          <h6>${prop.name || 'Unnamed Property'}</h6>
+          <small class="text-muted">${prop.location}</small>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function getPropertyIcon(type) {
+    const icons = {
+      'land': 'fas fa-map-marked-alt',
+      'apartment': 'fas fa-building',
+      'house': 'fas fa-home',
+      'plot': 'fas fa-vector-square'
+    };
+    return icons[type.toLowerCase()] || 'fas fa-question';
+  }
+  document.querySelector('.estimator-btn').addEventListener('click', openEstimator);
+
+  async function openPropertyEstimation(location, size, type) {
+    closeEstimatorModal();
+    document.getElementById('estimationOverlay').classList.add('active');
+    document.getElementById('propertyEstimationModal').classList.add('active');
+    document.getElementById('estLocation').textContent = location;
+
+    // Load prediction data
+    const res = await fetch('housing_predictions_2025_to_2030.xlsx');
+    const buffer = await res.arrayBuffer();
+    const workbook = XLSX.read(buffer, {type: 'array'});
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+    
+    const headers = data[0];
+    const rows = data.slice(1);
+    const areaData = rows.find(row => row[0].toLowerCase() === location.toLowerCase());
+
+    if(areaData) {
+      const currentPrice = areaData[headers.indexOf(2024)];
+      const projections = {
+        2025: areaData[headers.indexOf(2025)],
+        2027: areaData[headers.indexOf(2027)],
+        2030: areaData[headers.indexOf(2030)]
+      };
+
+      // Update highlights
+      document.getElementById('price2025').textContent = `₹${projections[2025]}`;
+      document.getElementById('price2027').textContent = `₹${projections[2027]}`;
+      document.getElementById('price2030').textContent = `₹${projections[2030]}`;
+
+      // Update current price display
+      const currentValue = size * currentPrice;
+      document.getElementById('currentPriceValue').innerHTML = 
+        `₹${currentValue.toLocaleString()}<br>
+         <small>@ ₹${currentPrice}/sqft</small>`;
+
+      // Add price comparison table
+      const comparisonHTML = Object.entries(projections).map(([year, price]) => {
+        const projectedValue = size * price;
+        const growthPercent = ((price - currentPrice)/currentPrice * 100).toFixed(1);
+        
+        return `
+          <tr>
+            <td>${year}</td>
+            <td>₹${price.toLocaleString()}</td>
+            <td>₹${projectedValue.toLocaleString()}</td>
+            <td class="${growthPercent >= 0 ? 'text-success' : 'text-danger'}">
+              ${growthPercent}%
+            </td>
+          </tr>
+        `;
+      }).join('');
+      
+      document.getElementById('priceComparison').innerHTML = comparisonHTML;
+
+      // Create chart
+      const ctx = document.getElementById('estPriceChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [2025, 2026, 2027, 2028, 2029, 2030],
+          datasets: [{
+            label: 'Price per SqFt',
+            data: areaData.slice(headers.indexOf(2025)), // Get from 2025 onward
+            borderColor: '#2c7873',
+            tension: 0.4,
+            fill: false
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            tooltip: { callbacks: { label: (ctx) => ` ₹${ctx.parsed.y.toLocaleString()}` } }
+          },
+          scales: {
+            y: {
+              beginAtZero: false,
+              ticks: { callback: value => `₹${value.toLocaleString()}` }
+            }
+          }
+        }
+      });
+
+      // Calculate estimations
+      const calculations = [];
+      for(const [year, price] of Object.entries(projections)) {
+        const estimatedValue = size * price;
+        const currentValue = size * currentPrice;
+        const profitPercent = ((estimatedValue - currentValue) / currentValue * 100).toFixed(1);
+        
+        calculations.push({
+          year,
+          pricePerSqft: price,
+          estimatedValue,
+          profitPercent
+        });
+      }
+
+      // Render calculations
+      // document.getElementById('estCalculations').innerHTML = calculations.map(c => `
+      //   <tr>
+      //     <td>${c.year}</td>
+      //     <td>₹${c.pricePerSqft.toLocaleString()}</td>
+      //     <td>₹${c.estimatedValue.toLocaleString()}</td>
+      //     <td class="${c.profitPercent >= 0 ? 'text-success' : 'text-danger'}">
+      //       ${c.profitPercent}%
+      //     </td>
+      //   </tr>
+      // `).join('');
+    }
+  }
+  function closeEstimationModal() {
+    document.getElementById('estimationOverlay').classList.remove('active');
+    document.getElementById('propertyEstimationModal').classList.remove('active');
+  }
+  </script>
+</body>
+</html>

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Property Details</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { overflow-x: hidden; }
+    .sidebar {
+      height: 100vh; background-color: #195065; padding-top: 60px;
+      position: fixed; width: 220px; color: white;
+    }
+    .sidebar a {
+      color: white; display: block; padding: 12px; text-decoration: none;
+    }
+    .sidebar a:hover { background-color: #143e50; }
+    .main-content { margin-left: 220px; padding: 20px; }
+    .property-table th { background-color: #1f7a8c; color: white; }
+    .expense-table th { background-color: #2ec4b6; color: white; }
+    .card-summary {
+      border-radius: 8px; padding: 20px; color: white; min-width: 220px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    }
+    .bg-primary { background-color: #1f7a8c !important; }
+    .bg-success { background-color: #3cb371 !important; }
+    .bg-warning { background-color: #ffb703 !important; color: black; }
+    .bg-danger { background-color: #e63946 !important; }
+    .expense-table td:last-child, .expense-table th:last-child {
+  width: 160px; /* or whatever width looks best for your buttons */
+  text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-dark bg-dark fixed-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">Real Estate Tracker</a>
+      <div class="d-flex gap-2">
+        <a href="editproperty.html" id="editprop" class="btn btn-warning">Edit This Property</a>
+        <a href="deleteproperty.html" id="deleteprop" class="btn btn-danger">Delete This Property</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <a href="dashboard.html">Home</a>
+    <a href="land.html">Land</a>
+    <a href="#">Apartments</a>
+    <a href="#">Villas</a>
+    <a href="#">Plots</a>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content mt-5">
+    <h2 class="mb-4">Property Overview</h2>
+    <table class="table table-bordered property-table">
+      <tbody id="propertyDetails"></tbody>
+    </table>
+
+    <h3 class="mt-5">Investment Summary</h3>
+<div class="row my-8">
+  <!-- Floating Cards Section -->
+  <div class="col-md-7 d-flex flex-wrap gap-3">
+    <div class="card-summary bg-primary flex-fill">
+      <h5>Current Value</h5>
+      <p class="fs-6" id="currentValue">₹0</p>
+    </div>
+    <div class="card-summary bg-success flex-fill">
+      <h5>Total Income</h5>
+      <p class="fs-6" id="totalIncome">₹0</p>
+    </div>
+    <div class="card-summary bg-warning flex-fill">
+      <h5>Profit / Loss</h5>
+      <p class="fs-6" id="profitLoss">₹0</p>
+    </div>
+    <div class="card-summary bg-danger ">
+      <h5>Profit %</h5>
+      <p class="fs-6" id="profitPercent">0%</p>
+    </div>
+  </div>
+
+  <!-- Chart Section -->
+  <div class="col-md-5">
+    <div class="card p-4 h-100">
+      <h5>Investment Overview</h5>
+      <canvas id="profitLossChart" style="max-height: 300px;"></canvas>
+    </div>
+  </div>
+</div>
+
+
+    <!-- Expense Section -->
+    <div class="d-flex justify-content-between align-items-center mt-5">
+      <h3>Expenses</h3>
+      <a href="addexpense.html" id="addexpenseBtn" class="btn btn-success">Add Expense</a>
+    </div>
+
+    <table class="table table-bordered expense-table">
+      <thead>
+        <tr>
+          <th>S.No</th>
+          <th>Date</th>
+          <th>Description</th>
+          <th>Amount</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="expenseDetails">
+        <tr><td colspan="5" class="text-center">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const baseUrl = window.location.pathname.split('/')[1];
+    const urlParams = new URLSearchParams(window.location.search);
+    const propertyId = urlParams.get('uid');
+    
+    document.getElementById("addexpenseBtn").addEventListener("click",function(event){
+      event.preventDefault();
+      let url = `addexpense.html?uid=${propertyId}`;
+      window.location.href = url;
+
+    });
+    document.getElementById("editprop").addEventListener("click",function(event){
+      event.preventDefault();
+      let url = `editproperty.html?uid=${propertyId}`;
+      window.location.href = url;
+    });
+    document.getElementById("deleteprop").addEventListener("click",function(event){
+      event.preventDefault();
+      let url = `deleteproperty.html?uid=${propertyId}`;
+      window.location.href = url;
+
+    });
+
+    async function loadProperty() {
+      const res = await fetch(`/${baseUrl}/GetProperty?uid=${propertyId}`,{
+        method: "POST"
+      });
+      const data = await res.json();
+      if(data.status === "error"){
+        console.error("Error: ",data.message);
+        return;
+      }
+
+       const table = document.getElementById('propertyDetails');
+        const hiddenKeys = ["_id", "username", "pl", "Expenses"];
+        table.innerHTML = Object.entries(data)
+        .filter(([key]) => !hiddenKeys.includes(key))
+        .map(([key, val]) => `<tr><th>${key}</th><td>${val}</td></tr>`)
+        .join('');
+
+    }
+
+    async function loadExpenses() {
+      const res = await fetch(`/${baseUrl}/GetExpenses?uid=${propertyId}`,{
+        method:"POST"
+      });
+      const data = await res.json();
+      if(data.status === "error"){
+        console.error("Error: ",data.message);
+        return;
+      }
+
+      const table = document.getElementById('expenseDetails');
+      if (!data.length) {
+        table.innerHTML = '<tr><td colspan="5" class="text-center">No expenses occurred yet.</td></tr>';
+        return;
+      }
+
+      table.innerHTML = data.map((exp, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${exp.expenseDate}</td>
+          <td>${exp.description}</td>
+          <td>₹${exp.amount}</td>
+          <td id="action-${index}">
+            <button class="btn btn-sm btn-danger" onclick="showConfirm(${index})">Delete</button>
+          </td>
+
+        </tr>`).join('');
+    }
+
+    async function deleteExpense(index) {
+      if (!confirm("Are you sure you want to delete this expense?")) return;
+      await fetch(`/${baseUrl}/DeleteExpense?uid=${propertyId}&index=${index}`, { method: "POST" });
+      loadExpenses();
+      loadProfitSummary();
+    }
+
+            function showConfirm(index) {
+        const cell = document.getElementById(`action-${index}`);
+        cell.innerHTML = `
+            <div class="d-flex justify-content-center gap-2">
+            <button class="btn btn-sm btn-outline-success" onclick="confirmDelete(${index})">Confirm</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="cancelDelete(${index})">Cancel</button>
+            </div>
+        `;
+        }
+
+
+        function cancelDelete(index) {
+        const cell = document.getElementById(`action-${index}`);
+        cell.innerHTML = `<button class="btn btn-sm btn-danger" onclick="showConfirm(${index})">Delete</button>`;
+        }
+
+        async function confirmDelete(index) {
+        await fetch(`/${baseUrl}/DeleteExpense?uid=${propertyId}&index=${index}`, { method: "POST" });
+        loadExpenses();
+        loadProfitSummary();
+        showMessage("Expense deleted successfully!", "success");
+        }
+        function showMessage(msg, type = "info") {
+        const div = document.getElementById("messageArea");
+        div.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show d-inline-block" role="alert">
+            ${msg}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>`;
+        setTimeout(() => {
+        const alert = div.querySelector('.alert');
+        if (alert) {
+        alert.classList.remove('show'); // Triggers fade out
+        alert.classList.add('fade');
+        setTimeout(() => div.innerHTML = "", 500); // Clear HTML after fade
+        }
+        }, 4000);
+        }
+
+
+
+    async function loadProfitSummary() {
+      const res = await fetch(`/${baseUrl}/ProfitLossByProperty`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `uid=${propertyId}`
+      });
+
+      const data = await res.json();
+      if (data.status === "error") {
+        console.error("Error fetching profit summary:", data.message);
+        return;
+      }
+
+      document.getElementById("currentValue").innerText = `₹${data.currentValue}`;
+      document.getElementById("totalIncome").innerText = `₹${data.totalIncome}`;
+      document.getElementById("profitLoss").innerText = `₹${data.profitLoss}`;
+      document.getElementById("profitPercent").innerText = `${data.profitLossPercentage}%`;
+
+      // Chart update
+      const ctx = document.getElementById('profitLossChart').getContext('2d');
+        new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Principal', 'Total Income', 'Total Expenses', 'Current Value', 'Net Profit/Loss'],
+            datasets: [{
+            label: 'Amount (₹)',
+            data: [
+                parseFloat(data.currentValue) - parseFloat(data.profitLoss),
+                data.totalIncome,
+                data.totalExpenses,
+                data.currentValue,
+                data.profitLoss
+            ],
+            backgroundColor: [
+                '#0077b6', '#90be6d', '#f94144', '#f9c74f', '#43aa8b'
+            ],
+            borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                label: (context) => `₹${context.raw.toLocaleString()}`
+                }
+            }
+            },
+            scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                callback: function(value) {
+                    return '₹' + value.toLocaleString();
+                }
+                }
+            },
+            x: {
+                ticks: {
+                font: {
+                    size: 14
+                }
+                }
+            }
+            }
+        }
+        });
+
+    }
+    loadProperty();
+    loadExpenses();
+    loadProfitSummary();
+  </script>
+  <div id="messageArea" class="text-center my-3"></div>
+
+</body>
+</html>
